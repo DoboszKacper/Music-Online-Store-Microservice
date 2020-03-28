@@ -6,7 +6,25 @@
 
     <groupId>org.example</groupId>
     <artifactId>Online Music Store Microservice</artifactId>
+    <packaging>pom</packaging>
     <version>1.0-SNAPSHOT</version>
+    <modules>
+        <module>Customers Microservice</module>
+        <module>Music Microservice</module>
+    </modules>
 
+
+    <dependencies>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-web</artifactId>
+            <version>3.8.5</version>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-core</artifactId>
+            <version>3.8.5</version>
+        </dependency>
+    </dependencies>
 
 </project>
