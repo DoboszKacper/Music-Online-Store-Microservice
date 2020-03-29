@@ -11,6 +11,7 @@
     <modules>
         <module>Customers Microservice</module>
         <module>Music Microservice</module>
+        <module>ApiGateway</module>
     </modules>
 
 
