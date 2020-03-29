@@ -4,6 +4,7 @@ import Models.Artist;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
+import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.Json;
@@ -26,13 +27,18 @@ public class MusicVerticle extends AbstractVerticle {
     private static MySQLConnectOptions connectOptions;
     private static MySQLPool client;
 
+    public static void main(String[] args) {
+        Vertx vertx = Vertx.vertx();
+        vertx.deployVerticle(new MusicVerticle());
+    }
+
     public MusicVerticle() {
 
         //Connect to the database
         connectOptions = new MySQLConnectOptions()
                 .setPort(3308)
                 .setHost("localhost")
-                .setDatabase("music")
+                .setDatabase("artists")
                 .setUser("root")
                 .setPassword("123");
 
@@ -44,7 +50,7 @@ public class MusicVerticle extends AbstractVerticle {
     }
 
     @Override
-    public void start(Future<Void> startFuture) throws Exception {
+    public void start(Future<Void> startFuture) {
 
         //Creating server and router
         HttpServer server = vertx.createHttpServer();
@@ -103,9 +109,9 @@ public class MusicVerticle extends AbstractVerticle {
         });
 
         //Server config
-        server.requestHandler(router).listen(8080,asyncResult->{
+        server.requestHandler(router).listen(8082,asyncResult->{
             if(asyncResult.succeeded()){
-                LOGGER.info("Api running successfully on port 8080");
+                LOGGER.info("Api running successfully on port 8082");
             }else{
                 LOGGER.info("Error : " + asyncResult.cause());
             }

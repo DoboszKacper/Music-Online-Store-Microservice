@@ -40,7 +40,7 @@ public class DatabaseVerticle extends AbstractVerticle {
         connectOptions = new MySQLConnectOptions()
                 .setPort(3309)
                 .setHost("localhost")
-                .setDatabase("users")
+                .setDatabase("customers")
                 .setUser("root")
                 .setPassword("123");
 
@@ -143,7 +143,7 @@ public class DatabaseVerticle extends AbstractVerticle {
         //------------------------------------------DELETE----------------------------------------------//
         public void DeleteCustomer(RoutingContext routingContext){
             int id = Integer.parseInt(routingContext.request().getParam("id"));
-            client.query("DELETE FROM users WHERE user_id="+id, res -> {
+            client.query("DELETE FROM customers WHERE customer_id="+id, res -> {
                 if (res.succeeded()) {
                     routingContext.response().setStatusCode(200).end("User of id: "+id+" deleted");
                 } else {
@@ -155,17 +155,18 @@ public class DatabaseVerticle extends AbstractVerticle {
 
         //------------------------------------------SELECT ONE----------------------------------------------//
         public void SelectOne(RoutingContext routingContext){
-            client.query("SELECT * FROM users", res->{
+            client.query("SELECT * FROM customers", res->{
                 if(res.succeeded()){
                     int id = Integer.parseInt(routingContext.request().getParam("id"));
                     Customer customer = new Customer();
                     RowSet<Row> result = res.result();
                     for (Row row : result) {
                         if(row.getInteger(0)==id) {
-                            customer.setName(row.getString(0));
-                            customer.setLastName(row.getString(1));
-                            customer.setAge(row.getInteger(2));
-                            customer.setPhoneNumber(row.getString(3));
+                            customer.setName(row.getString(1));
+                            customer.setLastName(row.getString(2));
+                            customer.setAge(row.getInteger(3));
+                            customer.setPhoneNumber(row.getString(4));
+                            customer.setId(row.getInteger(0));
                         }
                     }
                     JsonObject jsonObject =JsonObject.mapFrom(customer);
@@ -179,22 +180,22 @@ public class DatabaseVerticle extends AbstractVerticle {
                 }
             });
         }
-        //------------------------------------------SELECT ALL USERS----------------------------------------------//
+        //------------------------------------------SELECT ALL Customers----------------------------------------------//
         public void SelectAllCustomers(RoutingContext routingContext) {
 
-            client.query("SELECT * FROM users",res->{
+            client.query("SELECT * FROM customers",res->{
                 if(res.succeeded()){
-                    List<Customer> users = new ArrayList<>();
-                    JsonArray jsonUsers = new JsonArray(users);
+                    List<Customer> customers = new ArrayList<>();
+                    JsonArray jsonUsers = new JsonArray(customers);
                     RowSet<Row> result = res.result();
                     for (Row row : result) {
                         Customer customer = new Customer();
-                        customer.setName(row.getString(0));
-                        customer.setLastName(row.getString(1));
-                        customer.setAge(row.getInteger(2));
-                        customer.setPhoneNumber(row.getString(3));
-                        customer.setId(row.getInteger(4));
-                        users.add(customer);
+                        customer.setName(row.getString(1));
+                        customer.setLastName(row.getString(2));
+                        customer.setAge(row.getInteger(3));
+                        customer.setPhoneNumber(row.getString(4));
+                        customer.setId(row.getInteger(0));
+                        customers.add(customer);
                     }
                     routingContext.response()
                             .putHeader("content-type", "application/json; charset=utf-8")
@@ -210,18 +211,18 @@ public class DatabaseVerticle extends AbstractVerticle {
         public void SelectNumberOfCustomers(RoutingContext routingContext){
             int id1 = Integer.parseInt(routingContext.request().getParam("id1"));
             int id2 = Integer.parseInt(routingContext.request().getParam("id2"));
-            client.query("SELECT * FROM users LIMIT "+id1+","+id2, res->{
+            client.query("SELECT * FROM customers LIMIT "+id1+","+id2, res->{
                 if(res.succeeded()){
                     List<Customer> users = new ArrayList<>();
                     JsonArray jsonUsers = new JsonArray(users);
                     RowSet<Row> result = res.result();
                     for (Row row : result) {
                         Customer customer = new Customer();
-                        customer.setName(row.getString(0));
-                        customer.setLastName(row.getString(1));
-                        customer.setAge(row.getInteger(2));
-                        customer.setPhoneNumber(row.getString(3));
-                        customer.setId(row.getInteger(4));
+                        customer.setName(row.getString(1));
+                        customer.setLastName(row.getString(2));
+                        customer.setAge(row.getInteger(3));
+                        customer.setPhoneNumber(row.getString(4));
+                        customer.setId(row.getInteger(0));
                         users.add(customer);
                     }
                     routingContext.response()
@@ -239,7 +240,7 @@ public class DatabaseVerticle extends AbstractVerticle {
             final Customer user = Json.decodeValue(routingContext.getBody(),Customer.class);
             String name = user.getName();
             String phone_number = user.getPhoneNumber();
-            client.preparedQuery("INSERT INTO users (name, phone_number) VALUES (?, ?)", Tuple.of(name, phone_number), res -> {
+            client.preparedQuery("INSERT INTO customers (name, phone_number) VALUES (?, ?)", Tuple.of(name, phone_number), res -> {
                 if (res.succeeded()) {
                     routingContext.response().setStatusCode(200).end("User : "+name+" created");
                 } else {
