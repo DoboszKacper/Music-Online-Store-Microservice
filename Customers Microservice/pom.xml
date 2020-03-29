@@ -50,6 +50,11 @@
             <artifactId>vertx-web-common</artifactId>
             <version>3.8.5</version>
         </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-circuit-breaker</artifactId>
+            <version>3.8.5</version>
+        </dependency>
     </dependencies>
 
 

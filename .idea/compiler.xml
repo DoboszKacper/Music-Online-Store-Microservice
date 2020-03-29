@@ -7,9 +7,9 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="Online Music Store Microservice" />
-        <module name="Music Microservice" />
         <module name="Customers Microservice" />
         <module name="ApiGateway" />
+        <module name="Music Microservice" />
       </profile>
     </annotationProcessing>
   </component>
