@@ -15,6 +15,10 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.mysqlclient.MySQLConnectOptions;
 import io.vertx.mysqlclient.MySQLPool;
+import io.vertx.servicediscovery.Record;
+import io.vertx.servicediscovery.ServiceDiscovery;
+import io.vertx.servicediscovery.ServiceDiscoveryOptions;
+import io.vertx.servicediscovery.types.HttpEndpoint;
 import io.vertx.sqlclient.PoolOptions;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
@@ -28,7 +32,8 @@ import static com.sun.xml.internal.ws.spi.db.BindingContextFactory.LOGGER;
 public class DatabaseVerticle extends AbstractVerticle {
     private static MySQLConnectOptions connectOptions;
     private static MySQLPool client;
-
+    public Record publishedRecord;
+    public ServiceDiscovery discovery;
     public static void main(String[] args) {
         Vertx vertx = Vertx.vertx();
         vertx.deployVerticle(new DatabaseVerticle());
@@ -53,47 +58,46 @@ public class DatabaseVerticle extends AbstractVerticle {
     }
 
     @Override
-    public void start(Future<Void> startFuture) {
+    public void start(Future<Void> future) {
 
         //Create server and router
-        HttpServer server = vertx.createHttpServer();
         Router router = Router.router(vertx);
 
-        Route needThis = router.route("/api/customerApi/*").handler(BodyHandler.create());
+   //    Route needThis = router.route("/api/customerApi/*").handler(BodyHandler.create());
 
-        //GET
-        Route info = router
-                .get("/api/customerApi")
-                .handler(this::Info);
-        info.failureHandler(frc -> {
-            int statusCode = frc.statusCode();
-            HttpServerResponse response = frc.response();
-            response.setStatusCode(statusCode).end("Sorry! Info unavailable");
-        });
-
-        //GET
-        Route getId = router
-                .get("/api/customerApi/customer/:id")
-                .handler(this::SelectOne);
-        getId.failureHandler(frc -> {
-            int statusCode = frc.statusCode();
-            HttpServerResponse response = frc.response();
-            response.setStatusCode(statusCode).end("Sorry! GetId unavailable");
-        });
-
-        //POST
-        Route post = router
-                .post("/api/customerApi/customerCreate")
-                .handler(this::CreateCustomer);
-        post.failureHandler(frc -> {
-            int statusCode = frc.statusCode();
-            HttpServerResponse response = frc.response();
-            response.setStatusCode(statusCode).end("Sorry! Create unavailable");
-        });
+//        //GET
+//        Route info = router
+//                .get("/api/customerApi")
+//                .handler(this::Info);
+//        info.failureHandler(frc -> {
+//            int statusCode = frc.statusCode();
+//            HttpServerResponse response = frc.response();
+//            response.setStatusCode(statusCode).end("Sorry! Info unavailable");
+//        });
+//
+//        //GET
+//        Route getId = router
+//                .get("/api/customerApi/customer/:id")
+//                .handler(this::SelectOne);
+//        getId.failureHandler(frc -> {
+//            int statusCode = frc.statusCode();
+//            HttpServerResponse response = frc.response();
+//            response.setStatusCode(statusCode).end("Sorry! GetId unavailable");
+//        });
+//
+//        //POST
+//        Route post = router
+//                .post("/api/customerApi/customerCreate")
+//                .handler(this::CreateCustomer);
+//        post.failureHandler(frc -> {
+//            int statusCode = frc.statusCode();
+//            HttpServerResponse response = frc.response();
+//            response.setStatusCode(statusCode).end("Sorry! Create unavailable");
+//        });
 
         //GET
         Route getAll = router
-                .get("/api/customerApi/customers")
+                .get("/")
                 .handler(this::SelectAllCustomers);
         getAll.failureHandler(frc -> {
             int statusCode = frc.statusCode();
@@ -101,36 +105,78 @@ public class DatabaseVerticle extends AbstractVerticle {
             response.setStatusCode(statusCode).end("Sorry! GetAll unavailable code:" + statusCode);
         });
 
-        //GET
-        Route getLimit = router
-                .get("/api/customerApi/customers/limit1/:id1/limit2/:id2")
-                .handler(this::SelectNumberOfCustomers);
-        getLimit.failureHandler(frc -> {
-            int statusCode = frc.statusCode();
-            HttpServerResponse response = frc.response();
-            response.setStatusCode(statusCode).end("Sorry! GetLimit unavailable");
-        });
+//        //GET
+//        Route getLimit = router
+//                .get("/api/customerApi/customers/limit1/:id1/limit2/:id2")
+//                .handler(this::SelectNumberOfCustomers);
+//        getLimit.failureHandler(frc -> {
+//            int statusCode = frc.statusCode();
+//            HttpServerResponse response = frc.response();
+//            response.setStatusCode(statusCode).end("Sorry! GetLimit unavailable");
+//        });
+//
+//        //DELETE
+//        Route delete = router
+//                .delete("/api/customerApi/customerDelete/:id")
+//                .handler(this::DeleteCustomer);
+//        delete.failureHandler(frc -> {
+//            int statusCode = frc.statusCode();
+//            HttpServerResponse response = frc.response();
+//            response.setStatusCode(statusCode).end("Sorry! Delete unavailable");
+//        });
 
-        //DELETE
-        Route delete = router
-                .delete("/api/customerApi/customerDelete/:id")
-                .handler(this::DeleteCustomer);
-        delete.failureHandler(frc -> {
-            int statusCode = frc.statusCode();
-            HttpServerResponse response = frc.response();
-            response.setStatusCode(statusCode).end("Sorry! Delete unavailable");
-        });
+        vertx
+                .createHttpServer()
+                .requestHandler(router)
+                .listen(8081, ar -> {
+                    if(ar.succeeded()){
+                        LOGGER.info("CustomerApi UP");
+                    }else{
+                        LOGGER.info("CustomerApi failure: "+ar.cause());
+                    }
+                });
 
-        //Server config
-        server.requestHandler(router).listen(8081, asyncResult -> {
-            if (asyncResult.succeeded()) {
-                LOGGER.info("Api running successfully on port 8081");
+
+        discovery = ServiceDiscovery.create(vertx);
+
+        Record customerRecord = HttpEndpoint.createRecord(
+                "customer-service", // The service name
+                "localhost", // The host
+                8081, // the port
+                "/api");// the root of the service
+
+        discovery.publish(customerRecord, ar ->
+        {
+            if (ar.succeeded()) {
+                publishedRecord = ar.result();
+                LOGGER.info("Publish: "+ publishedRecord.getName());
             } else {
-                LOGGER.info("Error : " + asyncResult.cause());
+                LOGGER.info("Failed to publish: "+ ar.cause());
             }
         });
 
+
+
     }
+
+    @Override
+    public void stop(Future<Void> stopFuture) {
+        if(discovery != null) {
+            discovery.unpublish(publishedRecord.getRegistration(), ar ->
+            {
+                if (ar.succeeded()) {
+                    // Success
+                } else {
+                    // cannot unpublish the service,
+                    // may have already been removed,
+                    // or the record is not published
+                }
+            });
+
+            discovery.close();
+        }
+    }
+
         private void Info(RoutingContext routingContext) {
             routingContext.response().end("<h1>CustomerApi information<h1><br>" +
                     "<h2>Delete user: /api/customerApi/customerDelete/:id<h2><br>" +

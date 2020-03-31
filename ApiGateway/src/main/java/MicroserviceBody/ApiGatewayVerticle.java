@@ -9,23 +9,34 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.reactivex.circuitbreaker.CircuitBreaker;
 import io.vertx.reactivex.circuitbreaker.HystrixMetricHandler;
 import io.vertx.reactivex.core.AbstractVerticle;
+import io.vertx.reactivex.core.Promise;
 import io.vertx.reactivex.core.buffer.Buffer;
 import io.vertx.reactivex.core.http.HttpClient;
 import io.vertx.reactivex.core.http.HttpClientRequest;
+import io.vertx.reactivex.core.http.HttpServerResponse;
 import io.vertx.reactivex.ext.web.Router;
 import io.vertx.reactivex.ext.web.RoutingContext;
 import io.vertx.reactivex.ext.web.client.HttpResponse;
 import io.vertx.reactivex.ext.web.client.WebClient;
 import io.vertx.reactivex.ext.web.codec.BodyCodec;
 import io.vertx.reactivex.ext.web.handler.BodyHandler;
+import io.vertx.servicediscovery.Record;
+import io.vertx.servicediscovery.ServiceDiscovery;
+import io.vertx.servicediscovery.ServiceReference;
+import io.vertx.servicediscovery.types.HttpEndpoint;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.sun.xml.internal.ws.spi.db.BindingContextFactory.LOGGER;
 
 public class ApiGatewayVerticle extends AbstractVerticle {
+
     private String com[]={"/api/customerApi/customers","/api/musicApi/selectArtists"};
     private CircuitBreaker breaker;
+    private ServiceDiscovery discovery;
+
     public static void main(String[] args) {
         Vertx vertx = Vertx.vertx();
         vertx.deployVerticle(new ApiGatewayVerticle());
@@ -44,13 +55,17 @@ public class ApiGatewayVerticle extends AbstractVerticle {
 
         Router router = Router.router(vertx);
 
-                    router.get("/hystrix-metrics").handler(HystrixMetricHandler.create(vertx));
+
                     //Body Handler
                     router.route("/*").handler(BodyHandler.create());
 
                     // api gateway dispatch
-                    router.route("/api/*").handler(this::dispatchOneRequests);
+                     router.route("/api/selectDiscover").handler(this::OneDiscover);
 
+                    // api gateway dispatch
+                    //router.route("/api/*").handler(this::dispatchOneRequests);
+
+                    // api dispatch both
                     router.route("/both/selectAll").handler(this::dispatchBothSelectAll);
 
                     // api info
@@ -70,8 +85,23 @@ public class ApiGatewayVerticle extends AbstractVerticle {
                 });
     }
 
+    private void OneDiscover(RoutingContext context) {
+        discovery.getRecord(
+                new JsonObject().put("name", "customer-service"), found -> {
+                    if(found.succeeded()) {
+                        Record match = found.result();
+                        ServiceReference reference = discovery.getReference(match);
+                        HttpClient client = reference.get();
 
-    //---------Just single Http Request---------- Test2 -------
+                        client.getNow("/hello", response ->
+                                response.bodyHandler(
+                                        body ->
+                                                System.out.println(body.toString())));
+                    }
+                });
+    }
+
+    //---------Just single Http Request
     private void dispatchOneRequests(RoutingContext routingContext) {
         String path = routingContext.normalisedPath();
         if(path.contains("customerApi")){
@@ -82,7 +112,6 @@ public class ApiGatewayVerticle extends AbstractVerticle {
     }
 
     private void doDispatchOne(RoutingContext routingContext, int port, String command) {
-
         breaker.executeWithFallback(future-> {
             WebClient client = WebClient.create(vertx);
             if (command.contains("delete")) {

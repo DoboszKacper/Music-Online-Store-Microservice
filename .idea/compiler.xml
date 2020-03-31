@@ -6,11 +6,21 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="Online Music Store Microservice" />
-        <module name="Customers Microservice" />
-        <module name="ApiGateway" />
         <module name="Music Microservice" />
+        <module name="Customers Microservice" />
+        <module name="Online Music Store Microservice" />
+        <module name="ServceDiscoveryExample" />
+        <module name="ApiGateway" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="ApiGateway" target="8" />
+      <module name="Customers Microservice" target="8" />
+      <module name="Discovery Server" target="8" />
+      <module name="Hello" target="8" />
+      <module name="HelloReciver" target="8" />
+      <module name="Music Microservice" target="8" />
+      <module name="Music-Online-Store-Microservice" target="1.5" />
+    </bytecodeTargetLevel>
   </component>
 </project>

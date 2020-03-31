@@ -54,5 +54,15 @@
             <artifactId>vertx-circuit-breaker</artifactId>
             <version>3.8.5</version>
         </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-service-discovery</artifactId>
+            <version>3.8.5</version>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-rx-java2</artifactId>
+            <version>3.8.5</version>
+        </dependency>
     </dependencies>
 </project>

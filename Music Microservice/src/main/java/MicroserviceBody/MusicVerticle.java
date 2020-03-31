@@ -2,10 +2,10 @@ package MicroserviceBody;
 
 import Models.Artist;
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
@@ -16,17 +16,26 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.mysqlclient.MySQLConnectOptions;
 import io.vertx.mysqlclient.MySQLPool;
-import io.vertx.sqlclient.*;
+import io.vertx.servicediscovery.Record;
+import io.vertx.servicediscovery.ServiceDiscovery;
+import io.vertx.servicediscovery.ServiceDiscoveryOptions;
+import io.vertx.servicediscovery.types.HttpEndpoint;
+import io.vertx.sqlclient.PoolOptions;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.Tuple;
+
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.sun.xml.internal.ws.spi.db.BindingContextFactory.LOGGER;
+
 
 public class MusicVerticle extends AbstractVerticle {
 
     private static MySQLConnectOptions connectOptions;
     private static MySQLPool client;
-
+    public ServiceDiscovery discovery;
+    public Record musicRecord;
     public static void main(String[] args) {
         Vertx vertx = Vertx.vertx();
         vertx.deployVerticle(new MusicVerticle());
@@ -50,10 +59,9 @@ public class MusicVerticle extends AbstractVerticle {
     }
 
     @Override
-    public void start(Future<Void> startFuture) {
+    public void start(Future<Void> future) {
 
         //Creating server and router
-        HttpServer server = vertx.createHttpServer();
         Router router = Router.router(vertx);
 
         Route needThis = router.route("/api/musicApi/*").handler(BodyHandler.create());
@@ -108,15 +116,49 @@ public class MusicVerticle extends AbstractVerticle {
             response.setStatusCode(statusCode).end("Sorry! Delete unavailable");
         });
 
-        //Server config
-        server.requestHandler(router).listen(8082,asyncResult->{
-            if(asyncResult.succeeded()){
-                LOGGER.info("Api running successfully on port 8082");
-            }else{
-                LOGGER.info("Error : " + asyncResult.cause());
+        discovery = ServiceDiscovery.create(vertx,
+                new ServiceDiscoveryOptions()
+                        .setAnnounceAddress("service-announce")
+                        .setName("MusicApi"));
+
+        musicRecord = HttpEndpoint.createRecord(
+                "musicApi", // The service name
+                "localhost", // The host
+                8082, // the port
+                "/api/musicApi");// the root of the service
+
+        HttpServer server = vertx.createHttpServer();
+        server
+                .requestHandler(router)
+                .listen(8082, "localhost", ar -> {
+                    if (ar.succeeded()) {
+                        discovery.publish(musicRecord, arr -> {
+                            if (ar.succeeded()) {
+                                Record publishedRecord = arr.result();
+                                System.out.println(publishedRecord.getName() + " is published");
+                            } else {
+                                System.out.println("Result: " +ar.result());
+                            }
+                        });
+                        future.isComplete();
+                        System.out.println("API Gateway is running on port " + 8082);
+                    } else {
+                        future.fail(ar.cause());
+                    }
+                });
+    }
+
+    @Override
+    public void stop(Future<Void> stopFuture) {
+        discovery.unpublish(musicRecord.getRegistration(), ar -> {
+            if (ar.succeeded()) {
+                System.out.println("Service is successfully unpublished");
+            } else {
+                System.out.println("Result: " +ar.result());
             }
         });
     }
+
 
     private void Info(RoutingContext routingContext) {
         routingContext.response().end("<h1>MusicApi information<h1><br>" +
